@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 5000;
 const authRoutes = require('./routes/auth');
 const smsRoutes = require('./routes/sms');
 const otpRoutes = require('./routes/otp');
+const contactsRoutes = require('./routes/contacts');
+const templatesRoutes = require('./routes/templates');
+const analyticsRoutes = require('./routes/analytics');
 
 // Security middleware
 app.use(helmet());
@@ -49,6 +52,9 @@ if (!fs.existsSync(uploadsDir)) {
 app.use('/api/auth', authRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/contacts', contactsRoutes);
+app.use('/api/templates', templatesRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

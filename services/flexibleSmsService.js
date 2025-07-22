@@ -11,6 +11,9 @@ class FlexibleSMSService {
     switch (this.provider) {
       case 'twilio':
         try {
+          if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+            throw new Error('Missing Twilio credentials');
+          }
           const twilio = require('twilio');
           this.client = twilio(
             process.env.TWILIO_ACCOUNT_SID,
@@ -21,22 +24,27 @@ class FlexibleSMSService {
           console.log('✅ Twilio SMS service initialized');
         } catch (error) {
           console.error('❌ Twilio initialization failed:', error.message);
+          console.log('📱 Falling back to mock SMS service');
           this.provider = 'mock';
         }
         break;
 
       case 'africastalking':
         try {
+          if (!process.env.AFRICASTALKING_API_KEY || !process.env.AFRICASTALKING_USERNAME) {
+            throw new Error('Missing Africa\'s Talking credentials');
+          }
           const AfricasTalking = require('africastalking');
           const credentials = {
             apiKey: process.env.AFRICASTALKING_API_KEY,
-            username: process.env.AFRICASTALKING_USERNAME || 'sandbox'
+            username: process.env.AFRICASTALKING_USERNAME
           };
           const AT = AfricasTalking(credentials);
           this.client = AT.SMS;
           console.log('✅ Africa\'s Talking SMS service initialized');
         } catch (error) {
           console.error('❌ Africa\'s Talking initialization failed:', error.message);
+          console.log('📱 Falling back to mock SMS service');
           this.provider = 'mock';
         }
         break;
@@ -132,8 +140,8 @@ class FlexibleSMSService {
 
         if (messageId) {
           await pool.query(
-            'INSERT INTO recipients (message_id, phone_number, delivery_status, external_id) VALUES ($1, $2, $3, $4)',
-            [messageId, phoneNumber, 'sent', message.sid]
+            'INSERT INTO recipients (message_id, phone_number, delivery_status, sent_at) VALUES ($1, $2, $3, $4)',
+            [messageId, phoneNumber, 'sent', new Date()]
           );
         }
 
@@ -182,8 +190,8 @@ class FlexibleSMSService {
 
         if (messageId) {
           pool.query(
-            'INSERT INTO recipients (message_id, phone_number, delivery_status, external_id, cost) VALUES ($1, $2, $3, $4, $5)',
-            [messageId, recipients[index], result.status, recipient.messageId, recipient.cost]
+            'INSERT INTO recipients (message_id, phone_number, delivery_status, sent_at) VALUES ($1, $2, $3, $4)',
+            [messageId, recipients[index], result.status, new Date()]
           );
         }
 
@@ -203,8 +211,8 @@ class FlexibleSMSService {
       if (messageId) {
         recipients.forEach(phoneNumber => {
           pool.query(
-            'INSERT INTO recipients (message_id, phone_number, delivery_status, error_message) VALUES ($1, $2, $3, $4)',
-            [messageId, phoneNumber, 'failed', error.message]
+            'INSERT INTO recipients (message_id, phone_number, delivery_status, error_message, sent_at) VALUES ($1, $2, $3, $4, $5)',
+            [messageId, phoneNumber, 'failed', error.message, new Date()]
           );
         });
       }
@@ -229,12 +237,12 @@ class FlexibleSMSService {
         ...(isSuccess ? {} : { error: 'Mock failure for testing' })
       };
 
-      if (messageId) {
-        await pool.query(
-          'INSERT INTO recipients (message_id, phone_number, delivery_status, external_id, error_message) VALUES ($1, $2, $3, $4, $5)',
-          [messageId, phoneNumber, result.status, result.messageId, result.error || null]
-        );
-      }
+              if (messageId) {
+          await pool.query(
+            'INSERT INTO recipients (message_id, phone_number, delivery_status, error_message, sent_at) VALUES ($1, $2, $3, $4, $5)',
+            [messageId, phoneNumber, result.status, result.error || null, new Date()]
+          );
+        }
 
       results.push(result);
       

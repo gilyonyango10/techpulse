@@ -89,7 +89,7 @@ class OTPService {
       // Update user verification status if applicable
       if (otpRecord.user_id) {
         await pool.query(
-          'UPDATE users SET phone_verified = TRUE WHERE id = $1',
+          'UPDATE users SET is_verified = TRUE WHERE id = $1',
           [otpRecord.user_id]
         );
       }
